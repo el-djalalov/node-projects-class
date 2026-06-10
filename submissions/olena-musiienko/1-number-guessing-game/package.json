@@ -1,0 +1,14 @@
+{
+  "name": "number-guessing-game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/game.js",
+  "scripts": {
+    "start": "node src/game.js",
+    "dev": "node --watch src/game.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
