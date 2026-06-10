@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form method="POST" action="/length">
+    <label>Enter the length to convert</label>
+    <input type="text" name="value" />
+
+    <label>Unit to Convert from</label>
+    <select name="from">
+        <option value="ft">foot</option>
+        <option value="cm">centimeter</option>
+        <!-- add the rest -->
+    </select>
+
+    <label>Unit to Convert to</label>
+    <select name="to">
+        <option value="cm">centimeter</option>
+        <option value="ft">foot</option>
+        <!-- add the rest -->
+    </select>
+
+    <button type="submit">Convert</button>
+</form>
+</body>
+</html>
