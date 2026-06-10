@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Blog API Frontend</title>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<main class="page">
+    <h1>Blog Posts</h1>
+
+    <form id="post-form" class="form">
+        <input id="title" type="text" placeholder="Title" />
+        <textarea id="content" placeholder="Content"></textarea>
+        <input id="category" type="text" placeholder="Category" />
+        <input id="tags" type="text" placeholder="Tags: node, express, sqlite" />
+
+        <button type="submit">Create post</button>
+    </form>
+
+    <section class="toolbar">
+        <input id="search" type="text" placeholder="Search posts..." />
+        <button id="search-button">Search</button>
+        <button id="reset-button">Reset</button>
+    </section>
+
+    <section id="posts" class="posts"></section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
