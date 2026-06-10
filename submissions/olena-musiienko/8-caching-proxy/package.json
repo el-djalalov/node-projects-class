@@ -1,0 +1,14 @@
+{
+  "name": "caching-proxy",
+  "version": "1.0.0",
+  "description": "Caching Proxy CLI Tool",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js",
+    "dev": "node --watch proxy.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
