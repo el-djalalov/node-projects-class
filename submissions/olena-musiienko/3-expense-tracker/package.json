@@ -1,0 +1,21 @@
+{
+  "name": "expense-tracker",
+  "version": "1.0.0",
+  "description": "CLI expense tracker app",
+  "main": "src/expense-cli.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/expense-cli.js"
+  },
+  "keywords": [
+    "nodejs",
+    "cli",
+    "expense-tracker"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6"
+  }
+}
