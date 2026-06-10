@@ -1,0 +1,14 @@
+{
+  "name": "github-trending",
+  "version": "1.0.0",
+  "description": "A CLI tool that shows popular new GitHub repositories.",
+  "main": "trending.js",
+  "scripts": {
+    "start": "node trending.js",
+    "dev": "node --watch trending.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
