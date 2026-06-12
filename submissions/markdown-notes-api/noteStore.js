@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const express = require("express");
+
 const multer = require('multer');
 
 const notesPath = path.resolve(__dirname, "./notes");
@@ -244,9 +244,7 @@ function getNoteById(id) {
 function getNoteContentById(id) {
     const fileContent = fs.readFileSync(path.resolve(notesPath, getNotePath(id)));
     const decoder = new TextDecoder("utf-8");
-    const text = decoder.decode(fileContent);
-
-    return text;
+    return  decoder.decode(fileContent);
 }
 
 function deleteNote(id) {
