@@ -5,8 +5,8 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    color: #222;
+    background: #111018;
+    color: #e8e3f0;
 }
 
 .page {
@@ -16,16 +16,18 @@ body {
 }
 
 .card {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 12px;
+    background: #1a1724;
+    border: 1px solid #2d263a;
+    border-radius: 14px;
     padding: 24px;
     margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
 }
 
 h1,
 h2 {
     margin-top: 0;
+    color: #f1edf7;
 }
 
 .form {
@@ -34,11 +36,28 @@ h2 {
     gap: 10px;
 }
 
+label {
+    color: #c8bfd8;
+    font-weight: 600;
+}
+
 input {
-    padding: 10px;
+    padding: 11px 12px;
     font-size: 16px;
-    border: 1px solid #bbb;
+    border: 1px solid #3a314a;
     border-radius: 8px;
+    background: #12101a;
+    color: #f1edf7;
+    outline: none;
+}
+
+input::placeholder {
+    color: #7f768d;
+}
+
+input:focus {
+    border-color: #8b7bd8;
+    box-shadow: 0 0 0 3px rgba(139, 123, 216, 0.16);
 }
 
 button {
@@ -46,13 +65,28 @@ button {
     font-size: 16px;
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: white;
+    background: #7c6fd0;
+    color: #ffffff;
+    font-weight: 700;
     cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
 }
 
 button:hover {
-    background: #1d4ed8;
+    background: #8b7bd8;
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+a {
+    color: #a89bea;
+}
+
+a:hover {
+    color: #beb5f2;
 }
 
 .message {
@@ -60,17 +94,18 @@ button:hover {
 }
 
 .success {
-    color: #15803d;
+    color: #8bcfa7;
 }
 
 .error {
-    color: #b91c1c;
+    color: #e08a9a;
 }
 
 .result {
     margin-top: 16px;
     padding: 12px;
-    background: #f8fafc;
+    background: #211d2d;
+    border: 1px solid #352d45;
     border-radius: 8px;
 }
 
@@ -89,9 +124,9 @@ button:hover {
 
 .statItem {
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid #2f293d;
     border-radius: 8px;
-    background: #fafafa;
+    background: #15131d;
 }
 
 .statItem p {
@@ -100,10 +135,10 @@ button:hover {
 
 .originalUrl {
     word-break: break-all;
-    color: #555;
+    color: #b7adc9;
 }
 
 .createdAt {
-    color: #777;
+    color: #8d849d;
     font-size: 14px;
 }

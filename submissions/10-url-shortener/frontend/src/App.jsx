@@ -57,7 +57,7 @@ function App() {
 
     async function loadStats() {
         try {
-            const response = await fetch(`${API_URL}/stats`);
+            const response = await fetch(`${API_URL}/shorten?page=1&limit=50`);
             const data = await response.json();
 
             if (!response.ok) {
