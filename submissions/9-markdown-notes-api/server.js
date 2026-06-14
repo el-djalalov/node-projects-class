@@ -1,5 +1,4 @@
 const {
-
     saveNotes,
     updateNoteIndex,
     listNotes,
@@ -33,11 +32,13 @@ function onlyContentType(type) {
     };
 }
 
+// This function takes the original markdown text and an array of grammar suggestions from write-good, and returns the
+// markdown text with <mark> tags around the flagged phrases, including a title attribute with the reason for the
+// suggestion.
 function markGrammarSuggestions(markdownText, suggestions) {
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
         return markdownText;
     }
-
     const sortedSuggestions = [...suggestions].sort((a, b) => b.index - a.index);
     let markedText = markdownText;
 

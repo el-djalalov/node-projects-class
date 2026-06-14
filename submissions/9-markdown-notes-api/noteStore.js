@@ -51,6 +51,8 @@ const uploadMemory = multer({
 
 ensureNotesData();
 
+// ensureNotesData checks if the notes directory and index file exist, and initializes them if they don't.
+// It also loads the existing notes into memory for quick access.
 function ensureNotesData() {
     if (!fs.existsSync(notesPath)) {
         fs.mkdirSync(notesPath, { recursive: true });
@@ -82,6 +84,8 @@ function ensureNotesData() {
         notes = parsedNotes;
         return notes;
     } catch {
+        console.warn("notes/index.json is corrupt. Recreating empty index.");
+        // notes = [] helps to recover from a corrupted index file by resetting it to an empty array.
         notes = [];
         saveNotesData();
         return notes;
@@ -92,6 +96,7 @@ function saveNotesData() {
     fs.writeFileSync(notesIndexPath, JSON.stringify(notes, null, 2));
 }
 
+// saveNotes saves the content of a note to a new markdown file in the notes directory.
 function saveNotes(content) {
 
     if (!content || content.trim() === "") {
@@ -104,6 +109,7 @@ function saveNotes(content) {
     const fileId = getNextId();
     const fileName = getNotePath(fileId);
     const encoding = 'utf-8'
+    // mimetype is set to 'text/markdown' to indicate that the file being saved is a markdown file.
     const mimetype = 'text/markdown';
     const destination = path.resolve(notesPath, fileName);
     fs.writeFileSync(destination, content, {encoding: encoding});
@@ -159,13 +165,6 @@ function updateNoteIndex(file, name) {
             error: "Missing file",
         };
     }
-    //
-    // if (!name) {
-    //     return {
-    //         success: false,
-    //         error: "Missing name",
-    //     }
-    // }
 
     const now = new Date().toISOString();
 
@@ -191,6 +190,7 @@ function listNotes(options = {}) {
     const {search} = options;
     const filteredNotes = [];
 
+    // If a search term is provided, filter the notes based on the search term.
     if (search && search.trim()) {
 
         const normalizedSearch = search.trim().toLowerCase();
@@ -243,6 +243,8 @@ function getNoteById(id) {
 
 function getNoteContentById(id) {
     const fileContent = fs.readFileSync(path.resolve(notesPath, getNotePath(id)));
+    //decoder is used to convert the binary data read from the file into a UTF-8 string,
+    // ensuring that the content is properly interpreted as text.
     const decoder = new TextDecoder("utf-8");
     return  decoder.decode(fileContent);
 }
