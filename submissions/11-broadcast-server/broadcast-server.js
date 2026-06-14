@@ -127,10 +127,8 @@ function startServer() {
         clients.add(ws);
 
         console.log(`Client ${ws.clientId} connected`);
+
         sendHistory(ws);
-        // if we want to save some system messages
-        // addToHistory(`Client ${ws.clientId} has joined`);
-        broadcast(ws, `Client ${ws.clientId} has joined`, true);
 
         ws.on("message", (message) => {
             let data;
@@ -155,12 +153,22 @@ function startServer() {
             }
 
 
+            if (data.type === "join") {
+                ws.username = data.username || `Client ${ws.clientId}`;
+
+                const notice = `${ws.username} has joined`;
+
+                addToHistory(notice);
+                broadcast(ws, notice, true);
+                return;
+            }
+
             if (data.type !== "message") {
                 ws.send("Unknown message type");
                 return;
             }
 
-            const senderName = ws.username || data.username || `Client${ws.clientId}`;
+            const senderName = ws.username || data.username || `Client ${ws.clientId}`;
             const text = data.text;
 
             if (!text || text.trim() === "") {
@@ -191,7 +199,18 @@ function startServer() {
             broadcast(ws, formattedMessage);
         });
 
+        ws.on("close", () => {
+            removeClient(ws);
+        });
 
+        ws.on("error", () => {
+            removeClient(ws);
+        });
+    });
+
+
+    // The close event is emitted when the WebSocket connection is closed. We can use this event to clean up resources
+    // and notify other clients that a client has disconnected.
     process.on("SIGINT", () => {
         console.log("\nShutting down server...");
 
@@ -208,7 +227,6 @@ function startServer() {
     });
 
     console.log(`WebSocket server is running on ws://localhost:${port}`);
-});
 }
 
 // A simple client that connects to the server and allows sending messages from the command line
@@ -350,3 +368,4 @@ function parseArgs(args) {
 
 // node broadcast-server.js start --port 3001
 //several terminals for node broadcast-server.js connect --port 3001 --username Iris/Caramelka/Zephir
+// /exit
