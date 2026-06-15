@@ -1,0 +1,10 @@
+- create a new post
+Invoke-RestMethod `
+  -Uri "http://localhost:3000/posts" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"title":"First post","content":"meow","category":"backend","tags":["node","express"]}'
+
+
+  -check the list of posts
+  Invoke-RestMethod -Uri "http://localhost:3000/posts"
