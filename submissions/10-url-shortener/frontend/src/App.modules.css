@@ -1,0 +1,144 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111018;
+    color: #e8e3f0;
+}
+
+.page {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 16px;
+}
+
+.card {
+    background: #1a1724;
+    border: 1px solid #2d263a;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+h1,
+h2 {
+    margin-top: 0;
+    color: #f1edf7;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+label {
+    color: #c8bfd8;
+    font-weight: 600;
+}
+
+input {
+    padding: 11px 12px;
+    font-size: 16px;
+    border: 1px solid #3a314a;
+    border-radius: 8px;
+    background: #12101a;
+    color: #f1edf7;
+    outline: none;
+}
+
+input::placeholder {
+    color: #7f768d;
+}
+
+input:focus {
+    border-color: #8b7bd8;
+    box-shadow: 0 0 0 3px rgba(139, 123, 216, 0.16);
+}
+
+button {
+    padding: 10px 14px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    background: #7c6fd0;
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+button:hover {
+    background: #8b7bd8;
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+a {
+    color: #a89bea;
+}
+
+a:hover {
+    color: #beb5f2;
+}
+
+.message {
+    margin-top: 12px;
+}
+
+.success {
+    color: #8bcfa7;
+}
+
+.error {
+    color: #e08a9a;
+}
+
+.result {
+    margin-top: 16px;
+    padding: 12px;
+    background: #211d2d;
+    border: 1px solid #352d45;
+    border-radius: 8px;
+}
+
+.statsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.statsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.statItem {
+    padding: 12px;
+    border: 1px solid #2f293d;
+    border-radius: 8px;
+    background: #15131d;
+}
+
+.statItem p {
+    margin: 6px 0;
+}
+
+.originalUrl {
+    word-break: break-all;
+    color: #b7adc9;
+}
+
+.createdAt {
+    color: #8d849d;
+    font-size: 14px;
+}
