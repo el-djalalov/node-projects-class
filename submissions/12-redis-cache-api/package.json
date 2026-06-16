@@ -1,0 +1,17 @@
+{
+  "name": "12-redis-cache-api",
+  "version": "1.0.0",
+  "description": "Cache a slow API with Redis",
+  "main": "gh-cache.js",
+  "scripts": {
+    "start": "node gh-cache.js",
+    "dev": "node --watch gh-cache.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "redis": "^6.0.0"
+  }
+}
