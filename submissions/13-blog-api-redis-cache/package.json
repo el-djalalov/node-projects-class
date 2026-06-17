@@ -1,0 +1,18 @@
+{
+  "name": "13-blog-api-redis-cache",
+  "version": "1.0.0",
+  "description": "PROJECT 13 — Add a cache layer to the Blog API ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "redis": "^6.0.0"
+  }
+}
