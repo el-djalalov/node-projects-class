@@ -15,15 +15,46 @@ const POST_CACHE_TTL_SECONDS = 300;
 // 2. The application dropped to Redis DEL
 // 3. The search cache remained outdated
 const SEARCH_CACHE_TTL_SECONDS = 30;
+const RATE_LIMIT_MAX_REQUESTS = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
 
 const app = express();
 
 app.use(express.json());
+app.use(rateLimiter);
 
 let cache = null;
 let cacheHits = 0;
 let cacheMisses = 0;
 
+async function rateLimiter(req, res, next) {
+    if (!cache) {
+        // redis is not a source of truth
+        return next();
+    }
+
+    const ip = req.ip;
+    const key = `ratelimit:${ip}`;
+
+    try {
+        const count = await cache.incr(key);
+
+        if (count === 1) {
+            await cache.expire(key, RATE_LIMIT_WINDOW_SECONDS);
+        }
+
+        if (count > RATE_LIMIT_MAX_REQUESTS) {
+            return res.status(429).json({ error: "Too many requests" });
+        }
+
+        return next();
+    } catch {
+        console.warn("Redis rate limiter failed — allowing request.");
+        return next();
+    }
+}
+
+// simulation that our db is slow
 function sleep(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
@@ -116,8 +147,9 @@ async function deleteCacheKey(cache, key) {
     }
 
     try {
-        await cache.del(key);
-        console.log(`INVALIDATED ${key}`);
+        // 0 - the key didnt exist , 1 - key existed
+        const deletedCount = await cache.del(key);
+        console.log(`INVALIDATED ${key}, deleted: ${deletedCount}`);
     } catch {
         console.warn("Redis delete failed — cache may be stale.");
     }
@@ -140,6 +172,46 @@ async function deleteCacheByPattern(cache, pattern) {
     }
 }
 
+//stampede protection - to avoid multiple requests to SQLite when cache is missed
+// acquireCacheLock uses Redis SET command with NX option to create a lock key that expires after a short TTL,
+// preventing other requests from querying SQLite until the lock is released or expires.
+async function acquireCacheLock(cache, key, ttlSeconds = 5) {
+    if (!cache) {
+        return false;
+    }
+
+    const lockKey = `lock:${key}`;
+
+    try {
+        const result = await cache.set(lockKey, "1", {
+            // NX is a value that means "only set the key if it does not already exist". This ensures that only one
+            // request can acquire the lock at a time.
+            NX: true,
+            EX: ttlSeconds,
+        });
+
+        return result === "OK";
+    } catch {
+        return false;
+    }
+}
+
+// Release the lock after rebuilding the cache.
+// If this fails or the app crashes, the lock still expires by TTL.
+async function releaseCacheLock(cache, key) {
+    if (!cache) {
+        return;
+    }
+
+    const lockKey = `lock:${key}`;
+
+    try {
+        await cache.del(lockKey);
+    } catch {
+        // If deleting the lock fails, it will expire by TTL anyway.
+    }
+}
+
 app.get("/posts", async (req, res) => {
     const search = req.query.search || "";
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -147,7 +219,8 @@ app.get("/posts", async (req, res) => {
     const sort = req.query.sort || "createdAt";
     const order = req.query.order || "desc";
 
-    const key = `posts:search:${search}:page:${page}:limit:${limit}:sort:${sort}:order:${order}`;
+    const searchKey = search || "all";
+    const key = `posts:search:${searchKey}:page:${page}:limit:${limit}:sort:${sort}:order:${order}`;
 
     const cachedPosts = await getCachedPost(cache, key);
 
@@ -157,6 +230,33 @@ app.get("/posts", async (req, res) => {
     }
 
     recordCacheMiss(key);
+
+    const hasLock = await acquireCacheLock(cache, key);
+
+    if (hasLock) {
+        try {
+            await sleep(50);
+
+            const posts = searchPosts(search, page, limit, sort, order);
+
+            await setCachedPost(cache, key, posts, SEARCH_CACHE_TTL_SECONDS);
+
+            return res.json(posts);
+
+        } finally {
+            await releaseCacheLock(cache, key);
+        }
+    }
+    // Another request may already be rebuilding this list cache.
+    await sleep(50);
+
+    const cachedAfterWait = await getCachedPost(cache, key);
+
+    if (cachedAfterWait !== null) {
+        recordCacheHit(key);
+        return res.json(cachedAfterWait);
+    }
+    // Fallback: cache still was not rebuilt, so read SQLite ourselves.
     await sleep(50);
 
     const posts = searchPosts(search, page, limit, sort, order);
@@ -196,10 +296,43 @@ app.get("/posts/:id", async (req, res) => {
 
     if (cachedPost !== null) {
         recordCacheHit(key);
+
         return res.json(cachedPost);
     }
 
     recordCacheMiss(key);
+
+    const hasLock = await acquireCacheLock(cache, key);
+
+    if (hasLock) {
+        try {
+            await sleep(50);
+
+            const post = getPost(id);
+
+            if (!post) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            await setCachedPost(cache, key, post, POST_CACHE_TTL_SECONDS);
+
+            return res.json(post);
+        } finally {
+            await releaseCacheLock(cache, key);
+        }
+    }
+
+    // Another request may already be rebuilding this cache key.
+    await sleep(50);
+
+    const cachedAfterWait = await getCachedPost(cache, key);
+
+    if (cachedAfterWait !== null) {
+        recordCacheHit(key);
+        return res.json(cachedAfterWait);
+    }
+
+    // Fallback: cache still was not rebuilt, so read SQLite ourselves.
     await sleep(50);
 
     const post = getPost(id);
@@ -208,7 +341,7 @@ app.get("/posts/:id", async (req, res) => {
         return res.status(404).json({ error: "Post not found" });
     }
 
-    await setCachedPost(cache, key, post);
+    await setCachedPost(cache, key, post, POST_CACHE_TTL_SECONDS);
 
     return res.json(post);
 });
@@ -261,7 +394,7 @@ app.delete("/posts/:id", async (req, res) => {
     await deleteCacheByPattern(cache, "posts:search:*");
 
     return res.status(204).end();
-})
+});
 
 app.patch("/posts/:id", async (req, res) => {
     const id = Number(req.params.id);
@@ -352,6 +485,7 @@ function validatePatchPost(body) {
     return errors;
 }
 
+
 process.on("SIGINT", async () => {
     printCacheStats();
 
@@ -395,6 +529,20 @@ startServer();
 //   -ContentType "application/json" `
 // -Body '{"title":"Second post","content":"Something","category": "tech","tags":["js","server"]}'
 
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"Third post","content":"Something","category": "tech","tags":["js","server"]}'
+
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"Fourth post","content":"Something","category": "tech","tags":["js","server"]}'
+
+
+
 //list
 // Invoke-RestMethod http://localhost:3000/posts
 
@@ -430,9 +578,17 @@ startServer();
 // }
 
 
-
-
+//429
+// try {
+//     Invoke-RestMethod http://localhost:3000/posts
+// } catch {
+//     $_.Exception.Response.StatusCode.value__
+// }
 
 
 // docker exec -it redis-cache redis-cli GET post:1
 // docker exec -it redis-cache redis-cli TTL post:1
+
+// docker exec -it redis-cache redis-cli GET "ratelimit:::1"
+// PS C:\Users\kraizkot> docker exec -it redis-cache redis-cli TTL "ratelimit:::1"
+// (integer) 41
