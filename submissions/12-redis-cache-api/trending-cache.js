@@ -70,7 +70,8 @@ async function connectRedis() {
     });
 
     client.on("error", () => {
-
+        console.warn("Redis unavailable — continuing without cache.");
+        return null;
     });
 
     try {
@@ -356,6 +357,7 @@ main();
 // node trending-cache.js --duration week --limit 10 --ttl 30
 // node trending-cache.js --duration week --limit 10 --no-cache
 // node trending-cache.js --duration week --limit 10 --json
+// node trending-cache.js --duration month --limit 5 --language Swift --ttl 3
 
 // node trending-cache.js --duration week --limit 10 --ttl 600
 // node trending-cache.js --duration week --limit 10 --ttl 600

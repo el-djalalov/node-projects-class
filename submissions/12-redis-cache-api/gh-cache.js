@@ -3,11 +3,6 @@ const { createClient } = require("redis");
 const DEFAULT_TTL_SECONDS = 60; // seconds — GitHub activity doesn't change second-to-second
 const NEGATIVE_TTL_SECONDS = 15; // seconds — cache negative results for a short time to avoid hammering GitHub
 
-if (!username) {
-    console.error("Usage: node gh-cache.js <username>");
-    process.exit(1);
-}
-
 function parseFlags(argv) {
     const args = [];
     const flags = {};
@@ -53,6 +48,8 @@ async function connectRedis() {
     });
 
     client.on("error", () => {
+        console.warn("Redis unavailable — continuing without cache.");
+        return null;
 
     });
 
@@ -281,13 +278,13 @@ async function main() {
 main();
 
 // docker start redis-cache
-//node gh-cache.js octocat - first go
+//node gh-cache.js el-djalalov - first go
 // MISS — fetched from GitHub
 // No recent public events.
 //node gh-cache.js octocat - second go
 // HIT — loaded from Redis cache
 // No recent public events.
-// node gh-cache.js octocat --ttl 5
+// node gh-cache.js el-djalalov --ttl 5
 // docker exec -it redis-cache redis-cli DEL github:events:octocat
 // docker stop redis-cache
 // in ps docker exec -it redis-cache redis-cli ping
