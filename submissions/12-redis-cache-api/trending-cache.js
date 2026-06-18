@@ -361,5 +361,7 @@ main();
 
 // node trending-cache.js --duration week --limit 10 --ttl 600
 // node trending-cache.js --duration week --limit 10 --ttl 600
+
+
 // docker exec -it redis-cache redis-cli KEYS "github:trending:*"
 // docker exec -it redis-cache redis-cli TTL github:trending:2026-06-09:10:all
