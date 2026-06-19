@@ -26,3 +26,88 @@ Before commit:
 - Redis down: API still reads from SQLite
 - Rate limit: returns 429 after the limit
 - Ctrl+C: prints cache hit-rate
+
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"First post","content":"Hello","category":"backend","tags":["node","redis"]}'
+
+
+// Invoke-RestMethod http://localhost:3000/posts/1
+// Invoke-RestMethod http://localhost:3000/posts/1
+// MISS post:1
+// SET post:1
+// HIT post:1
+
+//
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"Second post","content":"Something","category": "tech","tags":["js","server"]}'
+
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"Third post","content":"Something","category": "tech","tags":["js","server"]}'
+
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts" `
+// -Method POST `
+//   -ContentType "application/json" `
+// -Body '{"title":"Fourth post","content":"Something","category": "tech","tags":["js","server"]}'
+
+
+
+//list
+// Invoke-RestMethod http://localhost:3000/posts
+
+// Invoke-RestMethod "http://localhost:3000/posts?search=tech"
+// Invoke-RestMethod "http://localhost:3000/posts?search=backend"
+// Invoke-RestMethod "http://localhost:3000/posts?sort=title&order=asc"
+// Invoke-RestMethod "http://localhost:3000/posts?sort=title&order=desc"
+// Invoke-RestMethod "http://localhost:3000/posts?search=node&page=1&limit=10&order=desc"
+// Invoke-RestMethod "http://localhost:3000/posts?search=tech&page=1&limit=10"
+
+// Invoke-RestMethod `
+//   -Uri "http://localhost:3000/posts/1" `
+// -Method PUT `
+//   -ContentType "application/json" `
+// -Body '{"title":"Updated post","content":"Updated text","category":"backend","tags":["node","redis"]}'
+// INVALIDATED post:1
+//
+// Invoke-RestMethod http://localhost:3000/posts/1
+
+// Invoke-WebRequest `
+// -Uri "http://localhost:3000/posts/1" `
+// -Method DELETE
+// INVALIDATED post:1
+
+// docker exec -it redis-cache redis-cli GET post:1
+// (nil)
+
+// checking SQLite that the post is deleted
+// try {
+//     Invoke-RestMethod http://localhost:3000/posts/1
+// } catch {
+//     $_.Exception.Response.StatusCode.value__
+// }
+
+
+//429
+// try {
+//     Invoke-RestMethod http://localhost:3000/posts
+// } catch {
+//     $_.Exception.Response.StatusCode.value__
+// }
+
+
+// docker exec -it redis-cache redis-cli GET post:1
+// docker exec -it redis-cache redis-cli TTL post:1
+
+// docker exec -it redis-cache redis-cli GET "ratelimit:::1"
+// PS C:\Users\kraizkot> docker exec -it redis-cache redis-cli TTL "ratelimit:::1"
+// (integer) 41
+
