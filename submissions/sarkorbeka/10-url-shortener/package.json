@@ -1,0 +1,8 @@
+{
+  "name": "url-shortener-submission",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}
