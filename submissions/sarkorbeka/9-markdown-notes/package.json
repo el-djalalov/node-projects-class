@@ -1,0 +1,11 @@
+{
+  "name": "markdown-notes-submission",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.22.2",
+    "multer": "^1.4.5-lts.1",
+    "marked": "^15.0.0",
+    "write-good": "^1.0.8"
+  }
+}

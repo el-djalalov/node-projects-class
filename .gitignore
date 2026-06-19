@@ -16,3 +16,6 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# Generated files
+submissions/9-markdown-notes/notes/
