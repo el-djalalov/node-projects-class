@@ -1,0 +1,9 @@
+{
+  "name": "broadcast-server-submission",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "argv": "^0.0.3",
+    "ws": "^8.18.0"
+  }
+}
