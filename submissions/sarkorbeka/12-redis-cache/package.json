@@ -1,0 +1,9 @@
+{
+  "name": "redis-cache",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "argv": "^0.0.3",
+    "redis": "^4.7.0"
+  }
+}
