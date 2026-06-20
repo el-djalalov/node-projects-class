@@ -1,0 +1,14 @@
+{
+  "name": "14-api-rate-limiter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "blog-api-rate-limiter.js",
+  "scripts": {
+    "start": "node blog-api-rate-limiter.js",
+    "dev": "node --watch blog-api-rate-limiter.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
