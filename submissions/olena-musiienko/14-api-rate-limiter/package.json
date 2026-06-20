@@ -4,8 +4,8 @@
   "description": "",
   "main": "blog-api-rate-limiter.js",
   "scripts": {
-    "start": "node blog-api-rate-limiter.js",
-    "dev": "node --watch blog-api-rate-limiter.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "keywords": [],
   "author": "",
