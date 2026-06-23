@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Live Posts Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #280f4a;
+            color: #e5e7eb;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .status {
+            margin-bottom: 24px;
+            color: #9ca3af;
+        }
+
+        .post {
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e2a6e6;
+            border-radius: 8px;
+            background: #371f36;
+        }
+
+        .post-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .post-meta {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+<h1>Live Posts Dashboard</h1>
+<div class="status" id="status">Connecting...</div>
+<div id="posts"></div>
+
+<script>
+    const statusEl = document.getElementById("status");
+    const postsEl = document.getElementById("posts");
+
+    const events = new EventSource("/events/posts");
+
+    events.addEventListener("connected", (event) => {
+        const data = JSON.parse(event.data);
+        statusEl.textContent = data.message;
+    });
+
+    events.addEventListener("post.created", (event) => {
+        const post = JSON.parse(event.data);
+
+        const item = document.createElement("div");
+        item.className = "post";
+
+        item.innerHTML = `
+                <div class="post-title">${escapeHtml(post.title)}</div>
+                <div class="post-meta">
+                    postId: ${post.postId} · ${post.createdAt}
+                </div>
+            `;
+
+        postsEl.prepend(item);
+    });
+
+    events.onerror = () => {
+        statusEl.textContent = "Disconnected. Trying to reconnect...";
+    };
+
+    // escapeHtml function to prevent XSS attacks
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+</script>
+</body>
+</html>
