@@ -127,7 +127,9 @@ async function startQueueWorker() {
             console.log("Processing job:", job);
 
             if (job.type !== "notify") {
-                throw new Error(`Unknown job type: ${job.type}`);
+                console.error(`Unknown job type: ${job.type}`);
+                await handleFailedJob(redis, rawJob);
+                continue;
             }
             console.log(`Notify subscribers about post ${job.postId}: "${job.title}"`);
 
@@ -171,7 +173,7 @@ async function handleFailedJob(redis, rawJob) {
 
     await retryAndRequeueJob(redis, rawJob, {
         invalidJsonMessage: "Job is invalid JSON. Dropping it instead of retrying forever.",
-        droppedMessage: (job) => `Job dropped after ${MAX_RETRIES} retries:`,
+        droppedMessage: () => `Job dropped after ${MAX_RETRIES} retries:`,
         requeuedMessage: (job, nextAttempts) => `Job requeued after failure. attempt=${nextAttempts}/${MAX_RETRIES}`,
         restoreOnRequeueFailure: true,
         setRetryMetadata: (job) => {
@@ -196,7 +198,7 @@ async function recoverProcessingJobs(redis) {
 
         const result = await retryAndRequeueJob(redis, rawJob, {
             invalidJsonMessage: "Invalid job found in processing queue. Dropping:",
-            droppedMessage: (job) => `Recovered job dropped after ${MAX_RETRIES} retries:`,
+            droppedMessage: () => `Recovered job dropped after ${MAX_RETRIES} retries:`,
             requeuedMessage: null,
             restoreOnRequeueFailure: true,
             setRetryMetadata: (job) => {
@@ -207,7 +209,6 @@ async function recoverProcessingJobs(redis) {
 
         if (result.status === "requeued") {
             recoveredCount++;
-            continue;
         }
     }
 
