@@ -245,6 +245,42 @@ test("POST /posts rejects invalid post body", async (t) => {
     ]);
 });
 
+test("POST /posts rejects primitive JSON body", async (t) => {
+    const server = await startTestServer();
+
+    t.after(async () => {
+        await server.close();
+    });
+
+    const loginResponse = await fetch(`${server.baseUrl}/login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            username: "Iris",
+        }),
+    });
+
+    const loginBody = await loginResponse.json();
+
+    const response = await fetch(`${server.baseUrl}/posts`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${loginBody.token}`,
+        },
+        body: JSON.stringify("bad-body"),
+    });
+
+    const body = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.deepStrictEqual(body, {
+        error: "Invalid JSON body",
+    });
+});
+
 test("POST /admin/reload returns 503 outside a clustered worker", async (t) => {
     const server = await startTestServer();
 

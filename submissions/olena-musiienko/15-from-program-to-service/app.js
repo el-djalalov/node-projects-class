@@ -363,18 +363,7 @@ function createApp({ cache }) {
                 return res.json([]);
             }
 
-            const posts = [];
-
-            for (const result of results) {
-                const post = getPost(Number(result.value));
-
-                if (post) {
-                    posts.push({
-                        ...post,
-                        views: result.score,
-                    });
-                }
-            }
+            const posts = shapePopularPosts(results, getPost);
 
             res.json(posts);
         } catch (err) {
@@ -383,7 +372,7 @@ function createApp({ cache }) {
     });
 
 
-    app.post("/login", async (req, res, next) => {
+    app.post("/login", async (req, res) => {
         try {
             // Sessions fail closed: without Redis we cannot create a login session.
             if (!cache) {
@@ -554,6 +543,10 @@ function createApp({ cache }) {
 function validatePost(body) {
     const errors = [];
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return ["body must be a JSON object"];
+    }
+
     if (typeof body.title !== "string" || body.title.trim() === "") {
         errors.push("title is required");
     }
@@ -575,6 +568,10 @@ function validatePost(body) {
 
 function validatePatchPost(body) {
     const errors = [];
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return ["body must be a JSON object"];
+    }
 
     if (Object.keys(body).length === 0) {
         errors.push("at least one field is required");

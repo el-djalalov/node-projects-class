@@ -12,13 +12,106 @@ const PORT = Number(process.env.PORT) || 3000;
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const WEB_WORKER_SHUTDOWN_TIMEOUT_MS = 5000;
 const QUEUE_WORKER_SHUTDOWN_TIMEOUT_MS = 5000;
+const RESTART_WINDOW_MS = 60000;
+const WEB_WORKER_MAX_RESTARTS = 12;
+const QUEUE_WORKER_MAX_RESTARTS = 12;
+const RESTART_BASE_DELAY_MS = 500;
+const RESTART_MAX_DELAY_MS = 10000;
 
 let queueWorker = null;
 let shuttingDown = false;
-let rollingReloadCoordinator = null;
+let queueWorkerRestartController = null;
 
 let currentQueueWorkerProcessedCount = 0;
 let totalProcessedJobCount = 0;
+
+function createRestartController({
+    label,
+    maxRestarts,
+    windowMs,
+    baseDelayMs,
+    maxDelayMs,
+}) {
+    const timestamps = [];
+
+    function prune(now) {
+        while (timestamps.length > 0 && now - timestamps[0] > windowMs) {
+            timestamps.shift();
+        }
+    }
+
+    function scheduleAttempt(action, reason, resolve, reject) {
+        if (shuttingDown) {
+            if (typeof reject === "function") {
+                reject(new Error(`${label} restart aborted: shutting down`));
+            }
+            return;
+        }
+
+        const now = Date.now();
+        prune(now);
+
+        if (timestamps.length >= maxRestarts) {
+            console.error(
+                `${label} restart budget exceeded: ${timestamps.length} restarts in ${windowMs}ms. ` +
+                `Last reason: ${reason}`
+            );
+            shuttingDown = true;
+            if (typeof reject === "function") {
+                reject(new Error(`${label} restart budget exceeded`));
+            }
+            process.exit(1);
+            return;
+        }
+
+        timestamps.push(now);
+
+        const attempt = timestamps.length;
+        const baseDelay = Math.min(baseDelayMs * (2 ** (attempt - 1)), maxDelayMs);
+        const jitter = Math.floor(Math.random() * 200);
+        const delay = baseDelay + jitter;
+
+        console.warn(
+            `${label} restart attempt ${attempt}/${maxRestarts} scheduled in ${delay}ms. ` +
+            `Reason: ${reason}`
+        );
+
+        const timer = setTimeout(() => {
+            if (shuttingDown) {
+                if (typeof reject === "function") {
+                    reject(new Error(`${label} restart aborted: shutting down`));
+                }
+                return;
+            }
+
+            try {
+                const result = action();
+                if (typeof resolve === "function") {
+                    resolve(result);
+                }
+            } catch (err) {
+                scheduleAttempt(action, err.message, resolve, reject);
+            }
+        }, delay);
+
+        timer.unref();
+    }
+
+    function run(action, reason) {
+        return new Promise((resolve, reject) => {
+            scheduleAttempt(action, reason, resolve, reject);
+        });
+    }
+
+    function schedule(action, reason) {
+        run(action, reason).catch(() => {});
+    }
+
+    return {
+        run,
+        schedule,
+    };
+}
 
 async function connectRedis() {
     const client = createClient({
@@ -68,18 +161,6 @@ async function closeRedisClient(client) {
     if (typeof client.disconnect === "function") {
         client.disconnect();
     }
-}
-
-// Keep one rolling reload coordinator per primary process.
-function getRollingReloadCoordinator() {
-    if (!rollingReloadCoordinator) {
-        rollingReloadCoordinator = createRollingReloadCoordinator({
-            cluster,
-            logger: console,
-        });
-    }
-
-    return rollingReloadCoordinator;
 }
 
 // Spawn the queue worker process and wire its lifecycle events.
@@ -149,9 +230,17 @@ function startQueueWorker() {
             return;
         }
 
-        console.log("Restarting queue worker...");
-        currentQueueWorkerProcessedCount = 0;
-        queueWorker = startQueueWorker();
+        if (!queueWorkerRestartController) {
+            console.log("Restarting queue worker...");
+            currentQueueWorkerProcessedCount = 0;
+            queueWorker = startQueueWorker();
+            return;
+        }
+
+        queueWorkerRestartController.schedule(() => {
+            currentQueueWorkerProcessedCount = 0;
+            queueWorker = startQueueWorker();
+        }, `queue worker exited code=${code} signal=${signal}`);
     });
 
     return worker;
@@ -219,7 +308,6 @@ async function startWebWorker() {
 
         workerShuttingDown = true;
         console.log(`Web worker ${process.pid} received ${signal}. Shutting down...`);
-        console.log(`Web worker ${process.pid} received ${signal}. Shutting down...`);
 
         const forceShutdownTimer = setTimeout(() => {
             console.log(
@@ -238,7 +326,6 @@ async function startWebWorker() {
                 process.exit(1);
             });
         }, WEB_WORKER_SHUTDOWN_TIMEOUT_MS);
-        forceShutdownTimer.unref();
         forceShutdownTimer.unref();
 
         server.close((err) => {
@@ -264,8 +351,9 @@ async function startWebWorker() {
 }
 
 if (cluster.isPrimary) {
+    // primary process handles incoming connections and distributes them to workers in a round-robin manner.
+    cluster.schedulingPolicy = cluster.SCHED_RR;
     let workerCount;
-
     try {
         workerCount = getWorkerCount();
     } catch (err) {
@@ -277,14 +365,54 @@ if (cluster.isPrimary) {
     console.log(`Primary ${process.pid} is running`);
     console.log(`Starting ${workerCount} web workers`);
 
-    for (let i = 0; i < workerCount; i++) {
-        cluster.fork();
+    const webWorkerRestartController = createRestartController({
+        label: "Web worker",
+        maxRestarts: WEB_WORKER_MAX_RESTARTS,
+        windowMs: RESTART_WINDOW_MS,
+        baseDelayMs: RESTART_BASE_DELAY_MS,
+        maxDelayMs: RESTART_MAX_DELAY_MS,
+    });
+
+    queueWorkerRestartController = createRestartController({
+        label: "Queue worker",
+        maxRestarts: QUEUE_WORKER_MAX_RESTARTS,
+        windowMs: RESTART_WINDOW_MS,
+        baseDelayMs: RESTART_BASE_DELAY_MS,
+        maxDelayMs: RESTART_MAX_DELAY_MS,
+    });
+
+    function forkWebWorkerOrSchedule(reason) {
+        try {
+            cluster.fork();
+        } catch (err) {
+            webWorkerRestartController.schedule(() => {
+                cluster.fork();
+            }, `${reason}; fork failed: ${err.message}`);
+        }
     }
 
-    queueWorker = startQueueWorker();
+    for (let i = 0; i < workerCount; i++) {
+        forkWebWorkerOrSchedule("initial startup");
+    }
+
+    try {
+        queueWorker = startQueueWorker();
+    } catch (err) {
+        queueWorkerRestartController.schedule(() => {
+            queueWorker = startQueueWorker();
+        }, `initial startup; queue fork failed: ${err.message}`);
+    }
 
     // Lazy singleton that coordinates rolling reloads without dropping all web workers at once.
-    const rollingReload = getRollingReloadCoordinator();
+    const rollingReload = createRollingReloadCoordinator({
+        cluster,
+        logger: console,
+        forkWorker: () =>
+            webWorkerRestartController.run(
+                () => cluster.fork(),
+                "rolling reload replacement"
+            ),
+    });
 
     function handleRollingReloadSignal(signal) {
         console.log(`Primary received ${signal}; starting rolling reload.`);
@@ -311,8 +439,9 @@ if (cluster.isPrimary) {
             return;
         }
 
-        console.log("Starting replacement web worker...");
-        cluster.fork();
+        webWorkerRestartController.schedule(() => {
+            cluster.fork();
+        }, `web worker exited code=${code} signal=${signal}`);
     });
 
     cluster.on("message", (worker, message) => {

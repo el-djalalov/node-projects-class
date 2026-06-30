@@ -3,6 +3,7 @@ function createRollingReloadCoordinator({
     logger = console,
     listeningTimeoutMs = 5000,
     exitTimeoutMs = 5000,
+    forkWorker = () => cluster.fork(),
 }) {
     const intentionalExitIds = new Set();
     let reloading = false;
@@ -106,7 +107,7 @@ function createRollingReloadCoordinator({
     }
 
     async function startReplacementWorker() {
-        const replacement = cluster.fork();
+        const replacement = await forkWorker();
 
         try {
             await waitForWorkerListening(replacement);

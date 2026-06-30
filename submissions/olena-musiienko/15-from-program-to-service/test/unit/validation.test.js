@@ -62,6 +62,14 @@ test("validatePost rejects tags that are not an array of strings", () => {
     ]);
 });
 
+test("validatePost rejects non-object body", () => {
+    const errors = validatePost("bad-body");
+
+    assert.deepStrictEqual(errors, [
+        "body must be a JSON object",
+    ]);
+});
+
 test("validatePatchPost rejects empty patch body", () => {
     const errors = validatePatchPost({});
 
@@ -76,4 +84,12 @@ test("validatePatchPost accepts partial valid update", () => {
     });
 
     assert.deepStrictEqual(errors, []);
+});
+
+test("validatePatchPost rejects non-object body", () => {
+    const errors = validatePatchPost("bad-body");
+
+    assert.deepStrictEqual(errors, [
+        "body must be a JSON object",
+    ]);
 });
