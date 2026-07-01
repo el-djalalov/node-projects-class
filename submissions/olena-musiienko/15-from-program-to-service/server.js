@@ -16,6 +16,7 @@ const RESTART_WINDOW_MS = 60000;
 const WEB_WORKER_MAX_RESTARTS = 12;
 const QUEUE_WORKER_MAX_RESTARTS = 12;
 const RESTART_BASE_DELAY_MS = 500;
+//Never wait more than this amount before a restart attempt
 const RESTART_MAX_DELAY_MS = 10000;
 
 let queueWorker = null;
@@ -32,14 +33,18 @@ function createRestartController({
     baseDelayMs,
     maxDelayMs,
 }) {
+    //this tracks restart timestamps
     const timestamps = [];
 
+    //Keep only restart attempts that happened during the last windowMs milliseconds.
+    // Before checking the budget, old timestamps are removed
     function prune(now) {
         while (timestamps.length > 0 && now - timestamps[0] > windowMs) {
             timestamps.shift();
         }
     }
 
+    // Schedule a restart attempt with backoff and jitter. If the restart budget is exceeded, the process exits.
     function scheduleAttempt(action, reason, resolve, reject) {
         if (shuttingDown) {
             if (typeof reject === "function") {
@@ -47,10 +52,11 @@ function createRestartController({
             }
             return;
         }
-
+        //It removes old attempts from the budget window.
         const now = Date.now();
         prune(now);
 
+        //this checks whether the restart budget is exceeded
         if (timestamps.length >= maxRestarts) {
             console.error(
                 `${label} restart budget exceeded: ${timestamps.length} restarts in ${windowMs}ms. ` +
@@ -66,9 +72,13 @@ function createRestartController({
 
         timestamps.push(now);
 
+        // Backoff - calculates the delay before restarting
         const attempt = timestamps.length;
+        // Exponential backoff with jitter: baseDelay * 2^(attempt - 1) + random(0, 200)
         const baseDelay = Math.min(baseDelayMs * (2 ** (attempt - 1)), maxDelayMs);
+        // Jitter: random value between 0 and 200 milliseconds
         const jitter = Math.floor(Math.random() * 200);
+        // Total delay is the sum of base delay and jitter
         const delay = baseDelay + jitter;
 
         console.warn(
@@ -93,7 +103,7 @@ function createRestartController({
                 scheduleAttempt(action, err.message, resolve, reject);
             }
         }, delay);
-
+        //This timer should not keep the Node.js process alive by itself.
         timer.unref();
     }
 
@@ -391,6 +401,17 @@ if (cluster.isPrimary) {
         }
     }
 
+    function forkWebWorkerForRollingReload() {
+        try {
+            return Promise.resolve(cluster.fork());
+        } catch (err) {
+            return webWorkerRestartController.run(
+                () => cluster.fork(),
+                `rolling reload replacement; fork failed: ${err.message}`
+            );
+        }
+    }
+
     for (let i = 0; i < workerCount; i++) {
         forkWebWorkerOrSchedule("initial startup");
     }
@@ -407,11 +428,7 @@ if (cluster.isPrimary) {
     const rollingReload = createRollingReloadCoordinator({
         cluster,
         logger: console,
-        forkWorker: () =>
-            webWorkerRestartController.run(
-                () => cluster.fork(),
-                "rolling reload replacement"
-            ),
+        forkWorker: forkWebWorkerForRollingReload,
     });
 
     function handleRollingReloadSignal(signal) {
